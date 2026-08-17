@@ -1,0 +1,5 @@
+#include<iostream>
+int main(){
+    std::cout<<"DevHub Server v1.0"<<std::endl;
+    return 0;
+}
