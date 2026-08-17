@@ -13,6 +13,19 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 message(STATUS "Configuring DevHub v1.0")
 
+#=====================================
+#Configuration
+#=====================================
+add_library(devhub_config
+    common/Config.cpp
+)
+
+target_include_directories(devhub_config
+    PUBLIC
+       ${CMAKE_CURRENT_SOURCE_DIR}/common
+    )
+
+
 # ==========================================
 # Logger Library
 # ==========================================
@@ -37,6 +50,7 @@ add_executable(devhub_server
 target_link_libraries(devhub_server
     PRIVATE
         devhub_logger
+        devhub_config
 )
 
 # ==========================================
@@ -50,4 +64,5 @@ add_executable(devhub_client
 target_link_libraries(devhub_client
     PRIVATE
         devhub_logger
+        devhub_config
 )
