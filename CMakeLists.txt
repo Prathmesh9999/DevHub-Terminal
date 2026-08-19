@@ -14,7 +14,49 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "Configuring DevHub v1.0")
 
 #=====================================
-#Configuration
+# Networking
+#=====================================
+add_library(devhub_networking
+    networking/socket.c
+)
+
+target_include_directories(devhub_networking
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/networking
+)
+
+target_link_libraries(devhub_networking
+    PUBLIC
+        ws2_32
+)
+add_executable(networking_test
+    tests/networking_test.c
+)
+
+target_link_libraries(networking_test
+    PRIVATE
+        devhub_networking
+)
+
+add_executable(server_socket_test
+    tests/server_socket_test.c
+)
+
+target_link_libraries(server_socket_test
+    PRIVATE
+        devhub_networking
+)
+
+add_executable(client_socket_test
+    tests/client_socket_test.c
+)
+
+target_link_libraries(client_socket_test
+    PRIVATE
+        devhub_networking
+)
+#=====================================
+# Configuration
 #=====================================
 add_library(devhub_config
     common/Config.cpp
