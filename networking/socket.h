@@ -15,4 +15,5 @@ int socket_connect(SOCKET sock,const char * ip,unsigned short port);
 
 int socket_send(SOCKET sock,const char* data,int length);
 int socket_receive(SOCKET sock,char *buffer,int bufferSize);
+int socket_receive_all(SOCKET sock,char* buffer,int length);
 #endif

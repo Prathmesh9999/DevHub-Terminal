@@ -2,6 +2,7 @@
 #include<string.h>
 
 #include "../networking/socket.h"
+#include"../networking/protocol.h"
 
 int main(){
     printf("STARTING DevHub TCP server...\n");
@@ -45,18 +46,76 @@ int main(){
 
     printf("Client connected\n");
 
-    char buffer[1024];
-    int bytesReceived=socket_receive(clientSocket,buffer,sizeof(buffer));
+    DevHubHeader header;
 
-    if(bytesReceived>0){
-        printf("Received from client : %s\n",buffer);
-    }else if(bytesReceived==0){
-        printf("Client disconnected.\n");
-    }else{
-        printf("Failed to receive data.\n");
-    }
-    const char* response="Hello Client";
-    socket_send(clientSocket,response,(int)strlen(response));
+if (protocol_receive_header(
+        clientSocket,
+        &header) != 1)
+{
+    printf("Failed to receive DevHub header.\n");
+
+    closesocket(clientSocket);
+    closesocket(serverSocket);
+    socket_cleanup();
+
+    return 1;
+}
+
+printf("DevHub packet received.\n");
+
+printf("Version: %u\n", header.version);
+printf("Type: %u\n", header.type);
+printf(
+    "Payload length: %u\n",
+    header.payloadLength
+);
+
+unsigned char payload[1024];
+if (header.payloadLength >= sizeof(payload))
+{
+    printf("Payload too large.\n");
+
+    closesocket(clientSocket);
+    closesocket(serverSocket);
+    socket_cleanup();
+
+    return 1;
+}
+int payloadReceived = protocol_receive_payload(
+    clientSocket,
+    &header,
+    payload
+);
+
+if (payloadReceived < 0)
+{
+    printf("Failed to receive payload.\n");
+
+    closesocket(clientSocket);
+    closesocket(serverSocket);
+    socket_cleanup();
+
+    return 1;
+}
+payload[payloadReceived] = '\0';
+
+printf(
+    "Payload: %s\n",
+    payload
+);
+
+    // char buffer[1024];
+    // int bytesReceived=socket_receive(clientSocket,buffer,sizeof(buffer));
+
+    // if(bytesReceived>0){
+    //     printf("Received from client : %s\n",buffer);
+    // }else if(bytesReceived==0){
+    //     printf("Client disconnected.\n");
+    // }else{
+    //     printf("Failed to receive data.\n");
+    // }
+    // const char* response="Hello Client";
+    // socket_send(clientSocket,response,(int)strlen(response));
 
     closesocket(clientSocket);
     closesocket(serverSocket);

@@ -16,8 +16,10 @@ message(STATUS "Configuring DevHub v1.0")
 #=====================================
 # Networking
 #=====================================
+
 add_library(devhub_networking
     networking/socket.c
+    networking/protocol.c
 )
 
 target_include_directories(devhub_networking
@@ -52,6 +54,14 @@ add_executable(client_socket_test
 )
 
 target_link_libraries(client_socket_test
+    PRIVATE
+        devhub_networking
+)
+add_executable(protocol_test
+    tests/protocol_test.c
+)
+
+target_link_libraries(protocol_test
     PRIVATE
         devhub_networking
 )
