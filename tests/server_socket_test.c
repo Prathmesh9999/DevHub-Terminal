@@ -1,4 +1,5 @@
 #include<stdio.h>
+#include<string.h>
 
 #include "../networking/socket.h"
 
@@ -43,6 +44,20 @@ int main(){
     }
 
     printf("Client connected\n");
+
+    char buffer[1024];
+    int bytesReceived=socket_receive(clientSocket,buffer,sizeof(buffer));
+
+    if(bytesReceived>0){
+        printf("Received from client : %s\n",buffer);
+    }else if(bytesReceived==0){
+        printf("Client disconnected.\n");
+    }else{
+        printf("Failed to receive data.\n");
+    }
+    const char* response="Hello Client";
+    socket_send(clientSocket,response,(int)strlen(response));
+
     closesocket(clientSocket);
     closesocket(serverSocket);
 

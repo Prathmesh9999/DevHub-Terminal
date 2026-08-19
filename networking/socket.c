@@ -68,3 +68,22 @@ int socket_connect(SOCKET sock,const char * ip,unsigned short port){
 
     return 1;
 }
+
+int socket_send(SOCKET sock,const char* data,int length){
+    int result=send(sock,data,length,0);
+    if(result==SOCKET_ERROR){
+        return 0;
+    }
+    return result;
+}
+
+int socket_receive(SOCKET sock,char* buffer,int bufferSize){
+    int result=recv(sock,buffer,bufferSize-1,0);
+    if(result==SOCKET_ERROR)return -1;
+
+    if(result==0)return 0;
+
+    buffer[result]='\0';
+
+    return result;
+}

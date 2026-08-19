@@ -12,4 +12,7 @@ int socket_listen(SOCKET sock, int backlog);
 SOCKET socket_accept(SOCKET serverSock);
 
 int socket_connect(SOCKET sock,const char * ip,unsigned short port);
+
+int socket_send(SOCKET sock,const char* data,int length);
+int socket_receive(SOCKET sock,char *buffer,int bufferSize);
 #endif
