@@ -3,6 +3,7 @@
 
 #include "../networking/socket.h"
 #include"../networking/protocol.h"
+#include "../core/router.h"
 
 int main(){
     printf("STARTING DevHub TCP server...\n");
@@ -45,6 +46,8 @@ int main(){
     }
 
     printf("Client connected\n");
+
+// HEADER + PAYLOAD_____________________________________________________
 
     DevHubHeader header;
 
@@ -101,6 +104,14 @@ payload[payloadReceived] = '\0';
 
 printf("Payload: %s\n",payload);
 
+//ROUTER IMPL____________________________________________________________________________
+
+int routeResult=router_dispatch(&header,payload);
+if(!routeResult){
+    printf("Failed to route packet\n");
+}
+
+// RESPONSE MESSAGE______________________________________________________________________
 const char* responseMessage="Hello Client";
 DevHubHeader responseHeader;
 
