@@ -48,11 +48,14 @@ int protocol_receive_header(SOCKET sock,DevHubHeader *header)
         return -1;
     }
 
-    result = protocol_decode_header( buffer,header
-    );
+    result = protocol_decode_header( buffer,header);
 
     if (result != DEVHUB_HEADER_SIZE)
     {
+        return -1;
+    }
+
+    if(!protocol_validate_header(header)){
         return -1;
     }
 
@@ -71,4 +74,17 @@ int protocol_receive_payload(SOCKET sock,const DevHubHeader *header,unsigned cha
         (char *)buffer,
         (int)header->payloadLength
     );
+}
+
+int protocol_validate_header(const DevHubHeader* header){
+
+    if(header==NULL)return 0;
+
+    if(header->version!=DEVHUB_PROTOCOL_VERSION)return 0;
+
+    if(header->type<DEVHUB_MSG_AUTH||header->type>DEVHUB_MSG_RESPONSE)return 0;
+
+    if(header->payloadLength>DEVHUB_MAX_PAYLOAD_SIZE)return 0;
+
+    return 1;
 }

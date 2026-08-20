@@ -99,11 +99,39 @@ if (payloadReceived < 0)
 }
 payload[payloadReceived] = '\0';
 
-printf(
-    "Payload: %s\n",
-    payload
-);
+printf("Payload: %s\n",payload);
 
+const char* responseMessage="Hello Client";
+DevHubHeader responseHeader;
+
+responseHeader.version=DEVHUB_PROTOCOL_VERSION;
+responseHeader.type=DEVHUB_MSG_RESPONSE;
+responseHeader.payloadLength=(uint32_t)strlen(responseMessage);
+
+unsigned char responsePacket[DEVHUB_HEADER_SIZE+1024];
+
+int responsePacketSize=protocol_build_packet(&responseHeader,(const unsigned char*)responseMessage,responsePacket);
+if (responsePacketSize < 0)
+{
+    printf("Failed to build response packet.\n");
+ 
+    closesocket(clientSocket);
+    closesocket(serverSocket);
+    socket_cleanup();
+
+    return 1;
+}
+
+int responseBytesSent=socket_send(clientSocket,(const char *)responsePacket,responsePacketSize);
+
+if(responseBytesSent!=responsePacketSize){
+    printf("FAILED TO SEND RESPONCE PACKET\n");
+    closesocket(clientSocket);
+    closesocket(serverSocket);
+    socket_cleanup();
+    return 1;
+}
+printf("DevHub response packet sent.\n");
     // char buffer[1024];
     // int bytesReceived=socket_receive(clientSocket,buffer,sizeof(buffer));
 

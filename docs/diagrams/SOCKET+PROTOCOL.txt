@@ -1,0 +1,91 @@
+                         DEVHUB CLIENT
+                              │
+                              │
+                    client_socket_test
+                              │
+                    ┌─────────┴─────────┐
+                    │                   │
+                    ▼                   ▼
+             protocol_build       socket_connect
+                    │                   │
+                    ▼                   │
+              encode header             │
+                    │                   │
+                    ▼                   │
+             HEADER + PAYLOAD            │
+                    │                   │
+                    ▼                   ▼
+                socket_send() ───────► TCP
+                                        │
+════════════════════════════════════════╪══════════════
+                                        │
+                                        ▼
+                                      SERVER
+                                        │
+                                  accept()
+                                        │
+                                        ▼
+                                  clientSocket
+                                        │
+                              ┌─────────┴─────────┐
+                              │                   │
+                              ▼                   ▼
+                protocol_receive_header     socket_send
+                              │
+                              ▼
+                    socket_receive_all
+                              │
+                              ▼
+                            recv()
+                              │
+                              ▼
+                         6 bytes header
+                              │
+                              ▼
+                  protocol_decode_header()
+                              │
+                              ▼
+                  protocol_validate_header()
+                              │
+                              ▼
+                    payloadLength = 12
+                              │
+                              ▼
+                 protocol_receive_payload()
+                              │
+                              ▼
+                    socket_receive_all()
+                              │
+                              ▼
+                            recv()
+                              │
+                              ▼
+                      12 bytes payload
+                              │
+                              ▼
+                       "Hello Server"
+                              │
+                              ▼
+                         APPLICATION
+
+
+┌─────────────────────────────┐
+│ Application                 │
+│ "I want to send a CHAT."    │
+└──────────────┬──────────────┘
+               ▼
+┌─────────────────────────────┐
+│ Protocol                    │
+│ "I'll turn CHAT into bytes" │
+└──────────────┬──────────────┘
+               ▼
+┌─────────────────────────────┐
+│ Socket                      │
+│ "I'll move those bytes."    │
+└──────────────┬──────────────┘
+               ▼
+┌─────────────────────────────┐
+│ TCP                         │
+│ "I'll reliably transport    │
+│  those bytes."              │
+└─────────────────────────────┘

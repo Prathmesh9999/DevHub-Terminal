@@ -52,5 +52,52 @@ int main(){
 
     printf("\n");
 
+    printf("\nTESTING protocol validation...\n");
+    DevHubHeader valid;
+    valid.version=DEVHUB_PROTOCOL_VERSION;
+    valid.type=DEVHUB_MSG_CHAT;
+    valid.payloadLength=12;
+
+    printf("Valid Header : %s\n",protocol_validate_header(&valid)?"PASS":"FAIL");
+
+    DevHubHeader invalidVersion;
+
+invalidVersion.version = 99;
+invalidVersion.type = DEVHUB_MSG_CHAT;
+invalidVersion.payloadLength = 12;
+
+printf(
+    "Invalid version: %s\n",
+    protocol_validate_header(&invalidVersion)
+        ? "PASS"
+        : "FAIL"
+);
+DevHubHeader invalidType;
+
+invalidType.version = DEVHUB_PROTOCOL_VERSION;
+invalidType.type = 99;
+invalidType.payloadLength = 12;
+
+printf(
+    "Invalid type: %s\n",
+    protocol_validate_header(&invalidType)
+        ? "PASS"
+        : "FAIL"
+);
+
+DevHubHeader invalidLength;
+
+invalidLength.version = DEVHUB_PROTOCOL_VERSION;
+invalidLength.type = DEVHUB_MSG_CHAT;
+invalidLength.payloadLength =
+    DEVHUB_MAX_PAYLOAD_SIZE + 1;
+
+printf(
+    "Invalid payload length: %s\n",
+    protocol_validate_header(&invalidLength)
+        ? "PASS"
+        : "FAIL"
+);
+
     return 0;
 }

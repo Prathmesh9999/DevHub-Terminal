@@ -184,7 +184,7 @@ Target DevHub Client
 
 * TCP server
 * TCP client
-* Packet protocol
+* Packet protocol 
 * Multiple clients
 * Connection management
 

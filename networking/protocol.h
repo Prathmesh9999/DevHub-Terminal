@@ -6,6 +6,7 @@
 
 #define DEVHUB_PROTOCOL_VERSION 1
 #define DEVHUB_HEADER_SIZE 6
+#define DEVHUB_MAX_PAYLOAD_SIZE 1080
 
 typedef enum
 {
@@ -30,14 +31,9 @@ int protocol_decode_header(const unsigned char *buffer,DevHubHeader *header);
 
 int protocol_build_packet(const DevHubHeader *header, const unsigned char *payload, unsigned char *buffer);
 
-int protocol_receive_header(
-    SOCKET sock,
-    DevHubHeader *header
-);
+int protocol_receive_header(SOCKET sock,DevHubHeader *header);
 
-int protocol_receive_payload(
-    SOCKET sock,
-    const DevHubHeader *header,
-    unsigned char *buffer
-);
+int protocol_receive_payload(SOCKET sock,const DevHubHeader *header,unsigned char *buffer);
+
+int protocol_validate_header(const DevHubHeader* header);
 #endif

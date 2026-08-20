@@ -91,6 +91,41 @@ int main(void)
     //     printf("Failed to receive data.\n");
     // }
 
+    DevHubHeader responseHeader;
+    if(protocol_receive_header(clientSocket,&responseHeader)!=1){
+         printf("Failed to receive response header.\n");
+         closesocket(clientSocket);
+         socket_cleanup();
+
+         return 1;
+    }
+
+    printf("Response packet received\n");
+    printf("Response version : %u\n",responseHeader.version);
+    printf("Response type : %u\n",responseHeader.type);
+    printf("Response payload length : %u\n",responseHeader.payloadLength);
+
+    if(responseHeader.payloadLength>=1024){
+        printf("RESPONSE payload is too large.\n");
+        closesocket(clientSocket);
+        socket_cleanup();
+        return 1;
+    }
+
+    unsigned char responsePayload[1024];
+
+    int responsePayloadReceived=protocol_receive_payload(clientSocket,&responseHeader,responsePayload);
+
+    if(responsePayloadReceived<0){
+        printf("FAILED TO RECEIVE RESPONCE PAYLOAD.\n");
+        closesocket(clientSocket);
+        socket_cleanup();
+        return 1;
+    }
+
+    responsePayload[responsePayloadReceived]='\0';
+    printf("Response Payload :%s\n",responsePayload);
+
     closesocket(clientSocket);
 
     socket_cleanup();
