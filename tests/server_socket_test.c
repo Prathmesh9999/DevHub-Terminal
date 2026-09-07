@@ -1,30 +1,36 @@
-#include<stdio.h>
-#include<string.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "../networking/socket.h"
-#include"../networking/protocol.h"
+#include "../networking/protocol.h"
 #include "../core/router.h"
+#include "../core/session.h"
+#include "../core/auth.h"
 
-int main(){
+int main()
+{
     printf("STARTING DevHub TCP server...\n");
-    if(!socket_initialize()){
+    if (!socket_initialize())
+    {
         printf("FAILED to initialize WINSOCK\n");
         return 1;
     }
-    SOCKET serverSocket=socket_create_tcp();
-    if(serverSocket==INVALID_SOCKET){
+    SOCKET serverSocket = socket_create_tcp();
+    if (serverSocket == INVALID_SOCKET)
+    {
         printf("FAILED to create server Socket\n");
         return 1;
     }
     printf("TCP socket created\n");
-    if(!socket_bind(serverSocket,"127.0.0.1",5000)){
+    if (!socket_bind(serverSocket, "127.0.0.1", 5000))
+    {
         printf("FAILED to bind socket\n");
         closesocket(serverSocket);
         socket_cleanup();
         return 1;
     }
     printf("SOCKET bound to 127.0.0.1:5000\n");
-     if (!socket_listen(serverSocket, 10))
+    if (!socket_listen(serverSocket, 10))
     {
         printf("Failed to listen.\n");
 
@@ -37,8 +43,9 @@ int main(){
     printf("Server is listening...\n");
     printf("Waiting for a client...\n");
 
-    SOCKET clientSocket=socket_accept(serverSocket);
-    if(clientSocket==INVALID_SOCKET){
+    SOCKET clientSocket = socket_accept(serverSocket);
+    if (clientSocket == INVALID_SOCKET)
+    {
         printf("Failed to accept client\n");
         closesocket(serverSocket);
         socket_cleanup();
@@ -46,103 +53,174 @@ int main(){
     }
 
     printf("Client connected\n");
+    ClientSession session;
+    session_init(&session, clientSocket);
+    printf(
+        "Session initialized. Authenticated: %d\n",
+        session.authenticated);
 
-// HEADER + PAYLOAD_____________________________________________________
+    // HEADER + PAYLOAD_____________________________________________________
 
     DevHubHeader header;
 
-if (protocol_receive_header(
+    if (protocol_receive_header(
+            clientSocket,
+            &header) != 1)
+    {
+        printf("Failed to receive DevHub header.\n");
+
+        closesocket(clientSocket);
+        closesocket(serverSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+
+    printf("\nDevHub packet received.\n");
+
+    printf("Version: %u\n", header.version);
+    printf("Type: %u\n", header.type);
+    printf("Payload length: %u\n",
+           header.payloadLength);
+
+    unsigned char payload[1024];
+    if (header.payloadLength >= sizeof(payload))
+    {
+        printf("Payload too large.\n");
+
+        closesocket(clientSocket);
+        closesocket(serverSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+    int payloadReceived = protocol_receive_payload(
         clientSocket,
-        &header) != 1)
-{
-    printf("Failed to receive DevHub header.\n");
+        &header,
+        payload);
 
-    closesocket(clientSocket);
-    closesocket(serverSocket);
-    socket_cleanup();
+    if (payloadReceived < 0)
+    {
+        printf("Failed to receive payload.\n");
 
-    return 1;
-}
+        closesocket(clientSocket);
+        closesocket(serverSocket);
+        socket_cleanup();
 
-printf("DevHub packet received.\n");
+        return 1;
+    }
+    payload[payloadReceived] = '\0';
 
-printf("Version: %u\n", header.version);
-printf("Type: %u\n", header.type);
-printf(
-    "Payload length: %u\n",
-    header.payloadLength
-);
+    printf("Payload: %s\n", payload);
 
-unsigned char payload[1024];
-if (header.payloadLength >= sizeof(payload))
-{
-    printf("Payload too large.\n");
+    // ROUTER IMPLEMENTATION____________________________________________________________________________
 
-    closesocket(clientSocket);
-    closesocket(serverSocket);
-    socket_cleanup();
+    int routeResult = router_dispatch(&session,&header, payload);
+    if (!routeResult)
+    {
+        printf("Failed to route packet\n");
+    }
 
-    return 1;
-}
-int payloadReceived = protocol_receive_payload(
-    clientSocket,
-    &header,
-    payload
-);
+    // RESPONSE MESSAGE______________________________________________________________________
 
-if (payloadReceived < 0)
-{
-    printf("Failed to receive payload.\n");
+    if (header.type == DEVHUB_MSG_AUTH)
+    {
+        const char *responseText;
 
-    closesocket(clientSocket);
-    closesocket(serverSocket);
-    socket_cleanup();
+        if (routeResult)
+        {
+            char username[128];
+            if (auth_get_username(payload, header.payloadLength, username, sizeof(username)))
+            {
+                session_authenticate(&session, username);
+                printf("Session authenticated: %s\n", session.username);
+            }
+            printf(
+                "Authenticated: %d\n",
+                session.authenticated);
+            printf(
+                "Username: %s\n",
+                session.username);
+            responseText = "AUTH_SUCCESS";
+        }
+        else
+        {
+            responseText = "AUTH_FAILURE";
+        }
 
-    return 1;
-}
-payload[payloadReceived] = '\0';
+        DevHubHeader responseHeader;
 
-printf("Payload: %s\n",payload);
+        responseHeader.version =
+            DEVHUB_PROTOCOL_VERSION;
 
-//ROUTER IMPL____________________________________________________________________________
+        responseHeader.type =
+            DEVHUB_MSG_RESPONSE;
 
-int routeResult=router_dispatch(&header,payload);
-if(!routeResult){
-    printf("Failed to route packet\n");
-}
+        responseHeader.payloadLength =
+            (uint32_t)strlen(responseText);
 
-// RESPONSE MESSAGE______________________________________________________________________
-const char* responseMessage="Hello Client";
-DevHubHeader responseHeader;
+        unsigned char responsePacket[DEVHUB_HEADER_SIZE + 64];
 
-responseHeader.version=DEVHUB_PROTOCOL_VERSION;
-responseHeader.type=DEVHUB_MSG_RESPONSE;
-responseHeader.payloadLength=(uint32_t)strlen(responseMessage);
+        int responseSize = protocol_build_packet(
+            &responseHeader,
+            (const unsigned char *)responseText,
+            responsePacket);
 
-unsigned char responsePacket[DEVHUB_HEADER_SIZE+1024];
+        if (responseSize < 0)
+        {
+            printf("Failed to build AUTH response.\n");
+        }
+        else
+        {
+            int sent = socket_send(
+                clientSocket,
+                (const char *)responsePacket,
+                responseSize);
 
-int responsePacketSize=protocol_build_packet(&responseHeader,(const unsigned char*)responseMessage,responsePacket);
-if (responsePacketSize < 0)
-{
-    printf("Failed to build response packet.\n");
- 
-    closesocket(clientSocket);
-    closesocket(serverSocket);
-    socket_cleanup();
+            if (sent == responseSize)
+            {
+                printf(
+                    "AUTH response sent: %s\n",
+                    responseText);
+            }
+            else
+            {
+                printf("Failed to send AUTH response.\n");
+            }
+        }
+    }
 
-    return 1;
-}
+    // const char* responseMessage="Hello Client";
+    // DevHubHeader responseHeader;
 
-int responseBytesSent=socket_send(clientSocket,(const char *)responsePacket,responsePacketSize);
+    // responseHeader.version=DEVHUB_PROTOCOL_VERSION;
+    // responseHeader.type=DEVHUB_MSG_RESPONSE;
+    // responseHeader.payloadLength=(uint32_t)strlen(responseMessage);
 
-if(responseBytesSent!=responsePacketSize){
-    printf("FAILED TO SEND RESPONCE PACKET\n");
-    closesocket(clientSocket);
-    closesocket(serverSocket);
-    socket_cleanup();
-    return 1;
-}
-printf("DevHub response packet sent.\n");
+    // unsigned char responsePacket[DEVHUB_HEADER_SIZE+1024];
+
+    // int responsePacketSize=protocol_build_packet(&responseHeader,(const unsigned char*)responseMessage,responsePacket);
+    // if (responsePacketSize < 0)
+    // {
+    //     printf("Failed to build response packet.\n");
+
+    //     closesocket(clientSocket);
+    //     closesocket(serverSocket);
+    //     socket_cleanup();
+
+    //     return 1;
+    // }
+
+    // int responseBytesSent=socket_send(clientSocket,(const char *)responsePacket,responsePacketSize);
+
+    // if(responseBytesSent!=responsePacketSize){
+    //     printf("FAILED TO SEND RESPONCE PACKET\n");
+    //     closesocket(clientSocket);
+    //     closesocket(serverSocket);
+    //     socket_cleanup();
+    //     return 1;
+    // }
+    // printf("DevHub response packet sent.\n");
     // char buffer[1024];
     // int bytesReceived=socket_receive(clientSocket,buffer,sizeof(buffer));
 

@@ -19,6 +19,8 @@ message(STATUS "Configuring DevHub v1.0")
 add_library(devhub_core
     core/router.c
     core/chat.c
+    core/auth.c
+    core/session.c
 )
 
 target_include_directories(devhub_core
@@ -37,6 +39,23 @@ add_executable(router_test
 )
 
 target_link_libraries(router_test
+    PRIVATE
+        devhub_core
+)
+
+add_executable(auth_test
+    tests/auth_test.c
+)
+
+target_link_libraries(auth_test
+    PRIVATE
+        devhub_core
+)
+
+add_executable(session_test
+    tests/session_test.c
+)
+target_link_libraries(session_test
     PRIVATE
         devhub_core
 )
@@ -83,7 +102,7 @@ add_executable(client_socket_test
 
 target_link_libraries(client_socket_test
     PRIVATE
-        devhub_networking
+        devhub_core
 )
 add_executable(protocol_test
     tests/protocol_test.c
