@@ -21,6 +21,8 @@ add_library(devhub_core
     core/chat.c
     core/auth.c
     core/session.c
+    core/client_manager.c
+    core/client_worker.c
 )
 
 target_include_directories(devhub_core
@@ -59,6 +61,15 @@ target_link_libraries(session_test
     PRIVATE
         devhub_core
 )
+
+add_executable(client_manager_test
+    tests/client_manager_test.c
+)
+
+target_link_libraries(client_manager_test
+    devhub_core
+)
+
 
 #=====================================
 # Networking

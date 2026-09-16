@@ -3,6 +3,9 @@
 
 #include <winsock2.h>
 
+#define SOCKET_RECEIVE_ERROR        -1
+#define SOCKET_RECEIVE_DISCONNECTED -2
+
 int socket_initialize(void);
 void socket_cleanup(void);
 SOCKET socket_create_tcp(void);

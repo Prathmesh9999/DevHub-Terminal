@@ -91,8 +91,8 @@ int socket_receive_all(SOCKET sock,char* buffer,int length){
     int totalReceived=0;
     while(totalReceived<length){
         int result=recv(sock,buffer+totalReceived,length-totalReceived,0);
-        if(result==SOCKET_ERROR)return -1;
-        if(result==0)return 0;
+        if(result==SOCKET_ERROR)return SOCKET_RECEIVE_ERROR;
+        if(result==0)return SOCKET_RECEIVE_DISCONNECTED;
 
         totalReceived+=result;
     }

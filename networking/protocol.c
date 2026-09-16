@@ -43,6 +43,16 @@ int protocol_receive_header(SOCKET sock,DevHubHeader *header)
 
     int result = socket_receive_all(sock,(char *)buffer,DEVHUB_HEADER_SIZE);
 
+    if (result == SOCKET_RECEIVE_DISCONNECTED)
+    {
+        return 0;
+    }
+
+    if (result ==SOCKET_RECEIVE_ERROR)
+    {
+        return -1;
+    }
+
     if (result != DEVHUB_HEADER_SIZE)
     {
         return -1;
@@ -69,11 +79,24 @@ int protocol_receive_payload(SOCKET sock,const DevHubHeader *header,unsigned cha
         return 0;
     }
 
-    return socket_receive_all(
+    int result= socket_receive_all(
         sock,
         (char *)buffer,
         (int)header->payloadLength
     );
+
+     if (result == SOCKET_RECEIVE_DISCONNECTED)
+    {
+        return -2;
+    }
+
+    if (result == SOCKET_RECEIVE_ERROR)
+    {
+        return -1;
+    }
+
+    return result;
+
 }
 
 int protocol_validate_header(const DevHubHeader* header){
