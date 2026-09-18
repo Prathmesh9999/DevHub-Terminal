@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include<stdint.h>
 #include <string.h>
 
 #include "../networking/socket.h"
@@ -241,17 +242,150 @@ int main()
     // ---------------------------------------------------------
     // 12. Close client socket
     // ---------------------------------------------------------
-
     printf("\nClient authenticated successfully.\n");
+
+    /* =========================================================
+       CHAT TEST
+       ========================================================= */
+
+    printf("\nSending CHAT message...\n");
+
+    const char *chatMessage =
+        "Hello from DevHub Client";
+
+    DevHubHeader chatHeader;
+
+    chatHeader.version =
+        DEVHUB_PROTOCOL_VERSION;
+
+    chatHeader.type =
+        DEVHUB_MSG_CHAT;
+
+    chatHeader.payloadLength =
+        (uint32_t)strlen(chatMessage);
+
+    unsigned char chatPacket[DEVHUB_HEADER_SIZE + DEVHUB_MAX_PAYLOAD_SIZE];
+
+    int chatPacketSize =
+        protocol_build_packet(
+            &chatHeader,
+            (const unsigned char *)chatMessage,
+            chatPacket);
+
+    if (chatPacketSize < 0)
+    {
+        printf("FAILED TO BUILD CHAT PACKET\n");
+
+        closesocket(clientSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+
+    printf(
+        "CHAT packet built. Size: %d bytes\n",
+        chatPacketSize);
+
+    int chatByteSent = socket_send(clientSocket, (const char *)chatPacket, chatPacketSize);
+
+    if (chatByteSent != chatPacketSize)
+    {
+        printf("FAILED TO SEND CHAT PACKET\n");
+        closesocket(clientSocket);
+        socket_cleanup();
+        return 1;
+    }
+    printf("CHAT packet sent successfully.\n");
+    printf("\nWaiting for CHAT response...\n");
+
+DevHubHeader chatResponseHeader;
+
+int chatResponseHeaderResult =
+    protocol_receive_header(
+        clientSocket,
+        &chatResponseHeader
+    );
+
+if (chatResponseHeaderResult != 1)
+{
+    printf("FAILED TO RECEIVE CHAT RESPONSE HEADER\n");
+
+    closesocket(clientSocket);
+    socket_cleanup();
+
+    return 1;
+}
+
+printf("CHAT response header received.\n");
+
+printf(
+    "Response version : %u\n",
+    chatResponseHeader.version
+);
+
+printf(
+    "Response type : %u\n",
+    chatResponseHeader.type
+);
+
+printf(
+    "Response payload length : %u\n",
+    chatResponseHeader.payloadLength
+);
+
+unsigned char chatResponsePayload[64];
+
+if (chatResponseHeader.payloadLength >=
+    sizeof(chatResponsePayload))
+{
+    printf("CHAT RESPONSE PAYLOAD TOO LARGE\n");
+
+    closesocket(clientSocket);
+    socket_cleanup();
+
+    return 1;
+}
+
+int chatResponsePayloadSize =
+    protocol_receive_payload(
+        clientSocket,
+        &chatResponseHeader,
+        chatResponsePayload
+    );
+
+if (chatResponsePayloadSize < 0)
+{
+    printf("FAILED TO RECEIVE CHAT RESPONSE PAYLOAD\n");
+
+    closesocket(clientSocket);
+    socket_cleanup();
+
+    return 1;
+}
+
+chatResponsePayload[chatResponsePayloadSize] = '\0';
+
+printf(
+    "CHAT response : %s\n",
+    chatResponsePayload
+);
+
+if (strcmp(
+        (const char *)chatResponsePayload,
+        "CHAT_OK") == 0)
+{
+    printf("CHAT end-to-end test PASSED.\n");
+}
+else
+{
+    printf("CHAT end-to-end test FAILED.\n");
+}
     printf("Client is staying connected.\n");
     printf("Press ENTER to disconnect this client...\n");
 
     getchar();
-
     closesocket(clientSocket);
-
     socket_cleanup();
-
     printf("Client shutdown complete.\n");
 
     return 0;

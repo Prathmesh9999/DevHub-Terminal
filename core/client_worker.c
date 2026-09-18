@@ -6,6 +6,7 @@
 #include "../core/router.h"
 #include "../core/auth.h"
 #include "../core/session.h"
+#include "../core/chat.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -61,7 +62,7 @@ DWORD WINAPI client_worker(LPVOID argument)
             free(args);
 
             return 0;
-        }
+        }  
 
         if (headerResult == -1)
         {
@@ -78,7 +79,8 @@ DWORD WINAPI client_worker(LPVOID argument)
         }
         printf("\nWorker : DevHub packet received.\n");
 
-        printf("Worker : Version :%u\n", header.type);
+        printf("Worker : Version :%u\n", header.version);
+        printf("Worker : Type : %u\n", header.type);
 
         printf("Worker : Payload length : %u\n", header.payloadLength);
 
@@ -196,6 +198,78 @@ DWORD WINAPI client_worker(LPVOID argument)
                 {
                     printf("Worker : Failed to send AUTH response.\n");
                 }
+            }
+        }
+                
+        //--------------------------------------------------
+        // CHAT RESPONSE
+
+        if (header.type == DEVHUB_MSG_CHAT)
+        {
+            if (!routeResult)
+            {
+                printf(
+                    "Worker : CHAT request rejected.\n");
+                continue;
+            }
+
+            unsigned char chatResponse[64];
+
+            int chatResponseSize =
+                chat_build_response(
+                    chatResponse,
+                    sizeof(chatResponse));
+
+            if (chatResponseSize < 0)
+            {
+                printf(
+                    "Worker : Failed to build CHAT response.\n");
+                continue;
+            }
+
+            DevHubHeader responseHeader;
+
+            responseHeader.version =
+                DEVHUB_PROTOCOL_VERSION;
+
+            responseHeader.type =
+                DEVHUB_MSG_RESPONSE;
+
+            responseHeader.payloadLength =
+                (uint32_t)chatResponseSize;
+
+            unsigned char responsePacket[
+                DEVHUB_HEADER_SIZE + 64
+            ];
+
+            int responseSize =
+                protocol_build_packet(
+                    &responseHeader,
+                    chatResponse,
+                    responsePacket);
+
+            if (responseSize < 0)
+            {
+                printf(
+                    "Worker : Failed to build CHAT response packet.\n");
+                continue;
+            }
+
+            int sent =
+                socket_send(
+                    client->session.socket,
+                    (const char *)responsePacket,
+                    responseSize);
+
+            if (sent == responseSize)
+            {
+                printf(
+                    "Worker : CHAT response sent : CHAT_OK\n");
+            }
+            else
+            {
+                printf(
+                    "Worker : Failed to send CHAT response.\n");
             }
         }
     }
