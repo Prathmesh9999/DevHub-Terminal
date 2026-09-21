@@ -23,6 +23,7 @@ add_library(devhub_core
     core/session.c
     core/client_manager.c
     core/client_worker.c
+    core/file_handler.c
 )
 
 target_include_directories(devhub_core
@@ -67,7 +68,17 @@ add_executable(client_manager_test
 )
 
 target_link_libraries(client_manager_test
-    devhub_core
+    PRIVATE 
+        devhub_core
+)
+
+add_executable(file_handler_test
+    tests/file_handler_test.c
+)
+
+target_link_libraries(file_handler_test
+    PRIVATE
+        devhub_core
 )
 
 

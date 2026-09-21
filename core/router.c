@@ -1,6 +1,8 @@
 #include"router.h"
 #include "chat.h"
 #include "auth.h"
+#include "file_handler.h"
+#include "session.h"
 #include<stdio.h>
 
 
@@ -20,11 +22,15 @@ int router_dispatch(ClientSession *session,const DevHubHeader * header,const uns
     case DEVHUB_MSG_CHAT:
         printf("Router : CHAT message\n");
         return chat_handle(payload,header->payloadLength);
-    case DEVHUB_MSG_FILE_DOWNLOAD:
-        printf("Router : FILE_DOWNLOAD message\n");
-        break;
     case DEVHUB_MSG_FILE_UPLOAD:
         printf("Router : FILE_UPLOAD message\n");
+        if(!session_is_authenticated(session)){
+            printf("Router : Client not authenticated\n");
+            return 0;
+        }
+        return file_upload_handle(payload,header->payloadLength);
+    case DEVHUB_MSG_FILE_DOWNLOAD:
+        printf("Router : FILE_DOWNLOAD message\n");
         break;
     case DEVHUB_MSG_COMMAND:
         printf("Router : COMMAND message\n");

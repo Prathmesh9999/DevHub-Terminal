@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include<stdint.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "../networking/socket.h"
@@ -298,88 +298,320 @@ int main()
     printf("CHAT packet sent successfully.\n");
     printf("\nWaiting for CHAT response...\n");
 
-DevHubHeader chatResponseHeader;
+    DevHubHeader chatResponseHeader;
 
-int chatResponseHeaderResult =
-    protocol_receive_header(
-        clientSocket,
-        &chatResponseHeader
-    );
+    int chatResponseHeaderResult =
+        protocol_receive_header(
+            clientSocket,
+            &chatResponseHeader);
 
-if (chatResponseHeaderResult != 1)
-{
-    printf("FAILED TO RECEIVE CHAT RESPONSE HEADER\n");
+    if (chatResponseHeaderResult != 1)
+    {
+        printf("FAILED TO RECEIVE CHAT RESPONSE HEADER\n");
 
-    closesocket(clientSocket);
-    socket_cleanup();
+        closesocket(clientSocket);
+        socket_cleanup();
 
-    return 1;
-}
+        return 1;
+    }
 
-printf("CHAT response header received.\n");
+    printf("CHAT response header received.\n");
 
-printf(
-    "Response version : %u\n",
-    chatResponseHeader.version
-);
+    printf(
+        "Response version : %u\n",
+        chatResponseHeader.version);
 
-printf(
-    "Response type : %u\n",
-    chatResponseHeader.type
-);
+    printf(
+        "Response type : %u\n",
+        chatResponseHeader.type);
 
-printf(
-    "Response payload length : %u\n",
-    chatResponseHeader.payloadLength
-);
+    printf(
+        "Response payload length : %u\n",
+        chatResponseHeader.payloadLength);
 
-unsigned char chatResponsePayload[64];
+    unsigned char chatResponsePayload[64];
 
-if (chatResponseHeader.payloadLength >=
-    sizeof(chatResponsePayload))
-{
-    printf("CHAT RESPONSE PAYLOAD TOO LARGE\n");
+    if (chatResponseHeader.payloadLength >=
+        sizeof(chatResponsePayload))
+    {
+        printf("CHAT RESPONSE PAYLOAD TOO LARGE\n");
 
-    closesocket(clientSocket);
-    socket_cleanup();
+        closesocket(clientSocket);
+        socket_cleanup();
 
-    return 1;
-}
+        return 1;
+    }
 
-int chatResponsePayloadSize =
-    protocol_receive_payload(
-        clientSocket,
-        &chatResponseHeader,
-        chatResponsePayload
-    );
+    int chatResponsePayloadSize =
+        protocol_receive_payload(
+            clientSocket,
+            &chatResponseHeader,
+            chatResponsePayload);
 
-if (chatResponsePayloadSize < 0)
-{
-    printf("FAILED TO RECEIVE CHAT RESPONSE PAYLOAD\n");
+    if (chatResponsePayloadSize < 0)
+    {
+        printf("FAILED TO RECEIVE CHAT RESPONSE PAYLOAD\n");
 
-    closesocket(clientSocket);
-    socket_cleanup();
+        closesocket(clientSocket);
+        socket_cleanup();
 
-    return 1;
-}
+        return 1;
+    }
 
-chatResponsePayload[chatResponsePayloadSize] = '\0';
+    chatResponsePayload[chatResponsePayloadSize] = '\0';
 
-printf(
-    "CHAT response : %s\n",
-    chatResponsePayload
-);
+    printf(
+        "CHAT response : %s\n",
+        chatResponsePayload);
 
-if (strcmp(
-        (const char *)chatResponsePayload,
-        "CHAT_OK") == 0)
-{
-    printf("CHAT end-to-end test PASSED.\n");
-}
-else
-{
-    printf("CHAT end-to-end test FAILED.\n");
-}
+    if (strcmp(
+            (const char *)chatResponsePayload,
+            "CHAT_OK") == 0)
+    {
+        printf("CHAT end-to-end test PASSED.\n");
+    }
+    else
+    {
+        printf("CHAT end-to-end test FAILED.\n");
+    }
+
+    /* =========================================================
+       FILE UPLOAD TEST
+       ========================================================= */
+    printf("\nStarting FILE_UPLOAD test...\n");
+
+    const char *filePath = "sample.cpp";
+    const char *fileName = "sample.cpp";
+
+    // OPEN FILE ----------------------------------------------
+
+    FILE *file = fopen(filePath, "rb");
+    if (file == NULL)
+    {
+        printf("FAILED TO OPEN FILE FOR UPLOAD\n");
+
+        closesocket(clientSocket);
+        socket_cleanup();
+        return 1;
+    }
+
+    // GET FILE SIZE -----------------------------------------
+
+    fseek(file, 0, SEEK_END);
+
+    long fileSizeLong = ftell(file);
+
+    fseek(file, 0, SEEK_SET);
+
+    if (fileSizeLong < 0)
+    {
+        printf("FAILED TO GET FILE SIZE\n");
+
+        fclose(file);
+        closesocket(clientSocket);
+        socket_cleanup();
+        return 1;
+    }
+
+    uint32_t fileSize = (uint32_t)fileSizeLong;
+    printf("File name : %s\n", fileName);
+    printf("File Size : %u bytes\n", fileSize);
+
+    // READ FILE ----------------------------------------------
+
+    unsigned char fileData[512];
+
+    if (fileSize > sizeof(fileData))
+    {
+        printf("FILE TOO LARGE FOR CURRENT TEST\n");
+
+        fclose(file);
+        closesocket(clientSocket);
+        socket_cleanup();
+        return 1;
+    }
+
+    size_t bytesRead = fread(fileData, 1, fileSize, file);
+
+    fclose(file);
+
+    if (bytesRead != fileSize)
+    {
+        printf("FAILED TO READ COMPLETE FILE\n");
+        closesocket(clientSocket);
+        socket_cleanup();
+        return 1;
+    }
+
+    /* ---------------------------------------------------------
+       BUILD FILE_UPLOAD PAYLOAD
+       --------------------------------------------------------- */
+
+    uint16_t fileNameLength = (uint16_t)strlen(fileName);
+
+    unsigned char uploadPayload[1024];
+    unsigned int offset = 0;
+
+    uploadPayload[offset++] = (unsigned char)(fileNameLength >> 8);
+
+    uploadPayload[offset++] = (unsigned char)(fileNameLength & 0xFF);
+
+    memcpy(uploadPayload + offset, fileName, fileNameLength);
+
+    offset += fileNameLength;
+
+    /* File size - 4 bytes */
+
+    uploadPayload[offset++] =
+        (unsigned char)(fileSize >> 24);
+
+    uploadPayload[offset++] =
+        (unsigned char)(fileSize >> 16);
+
+    uploadPayload[offset++] =
+        (unsigned char)(fileSize >> 8);
+
+    uploadPayload[offset++] =
+        (unsigned char)(fileSize);
+
+    /* File data */
+
+    memcpy(
+        uploadPayload + offset,
+        fileData,
+        fileSize);
+
+    offset += fileSize;
+
+    printf(
+        "FILE_UPLOAD payload size : %u bytes\n",
+        offset);
+
+    /* ---------------------------------------------------------
+       BUILD DEVHUB PACKET
+       --------------------------------------------------------- */
+
+    DevHubHeader uploadHeader;
+    uploadHeader.version = DEVHUB_PROTOCOL_VERSION;
+    uploadHeader.type = DEVHUB_MSG_FILE_UPLOAD;
+    uploadHeader.payloadLength = (uint32_t)offset;
+
+    unsigned char uploadPacket[DEVHUB_HEADER_SIZE + 1024];
+
+    int uploadPacketSize = protocol_build_packet(&uploadHeader, uploadPayload, uploadPacket);
+
+    if (uploadPacketSize < 0)
+    {
+        printf("FAILED TO BUILD FILE_UPLOAD PACKET\n");
+        closesocket(clientSocket);
+        socket_cleanup();
+        return 1;
+    }
+
+    printf("FILE UPLOAD packet size : %d bytes\n", uploadPacketSize);
+
+    /* ---------------------------------------------------------
+       SEND FILE_UPLOAD PACKET
+       --------------------------------------------------------- */
+
+    int uploadBytesSent = socket_send(clientSocket, (const char *)uploadPacket, uploadPacketSize);
+
+    if (uploadBytesSent != uploadPacketSize)
+    {
+        printf("FAILED TO SEND FILE_UPLOAD PACKET\n");
+        closesocket(clientSocket);
+        socket_cleanup();
+        return 1;
+    }
+
+    printf("FILE_UPLOAD packet sent successfully\n");
+
+    printf("\nWaiting for FILE_UPLOAD response...\n");
+
+    DevHubHeader uploadResponseHeader;
+
+    int uploadResponseHeaderResult =
+        protocol_receive_header(
+            clientSocket,
+            &uploadResponseHeader);
+
+    if (uploadResponseHeaderResult != 1)
+    {
+        printf(
+            "FAILED TO RECEIVE FILE_UPLOAD RESPONSE HEADER\n");
+
+        closesocket(clientSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+
+    printf(
+        "FILE_UPLOAD response header received.\n");
+
+    printf(
+        "Response version : %u\n",
+        uploadResponseHeader.version);
+
+    printf(
+        "Response type : %u\n",
+        uploadResponseHeader.type);
+
+    printf(
+        "Response payload length : %u\n",
+        uploadResponseHeader.payloadLength);
+
+    unsigned char uploadResponsePayload[64];
+
+    if (uploadResponseHeader.payloadLength >=
+        sizeof(uploadResponsePayload))
+    {
+        printf(
+            "FILE_UPLOAD RESPONSE PAYLOAD TOO LARGE\n");
+
+        closesocket(clientSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+
+    int uploadResponsePayloadSize =
+        protocol_receive_payload(
+            clientSocket,
+            &uploadResponseHeader,
+            uploadResponsePayload);
+
+    if (uploadResponsePayloadSize < 0)
+    {
+        printf(
+            "FAILED TO RECEIVE FILE_UPLOAD RESPONSE PAYLOAD\n");
+
+        closesocket(clientSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+
+    uploadResponsePayload[uploadResponsePayloadSize] = '\0';
+
+    printf(
+        "FILE_UPLOAD response : %s\n",
+        uploadResponsePayload);
+
+    if (strcmp(
+            (const char *)uploadResponsePayload,
+            "FILE_UPLOAD_OK") == 0)
+    {
+        printf(
+            "FILE_UPLOAD end-to-end test PASSED.\n");
+    }
+    else
+    {
+        printf(
+            "FILE_UPLOAD end-to-end test FAILED.\n");
+    }
+
+
     printf("Client is staying connected.\n");
     printf("Press ENTER to disconnect this client...\n");
 

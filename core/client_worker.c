@@ -62,7 +62,7 @@ DWORD WINAPI client_worker(LPVOID argument)
             free(args);
 
             return 0;
-        }  
+        }
 
         if (headerResult == -1)
         {
@@ -105,22 +105,22 @@ DWORD WINAPI client_worker(LPVOID argument)
                 payload);
 
         if (payloadReceived == -2)
-{
-    printf(
-        "Worker: Client disconnected normally.\n");
+        {
+            printf(
+                "Worker: Client disconnected normally.\n");
 
-    client_manager_remove(clientIndex);
+            client_manager_remove(clientIndex);
 
-    closesocket(client->session.socket);
+            closesocket(client->session.socket);
 
-    printf(
-        "Worker finished for client slot %d.\n",
-        clientIndex);
+            printf(
+                "Worker finished for client slot %d.\n",
+                clientIndex);
 
-    free(args);
+            free(args);
 
-    return 0;
-}
+            return 0;
+        }
 
         if (payloadReceived == -1)
         {
@@ -200,7 +200,7 @@ DWORD WINAPI client_worker(LPVOID argument)
                 }
             }
         }
-                
+
         //--------------------------------------------------
         // CHAT RESPONSE
 
@@ -238,9 +238,7 @@ DWORD WINAPI client_worker(LPVOID argument)
             responseHeader.payloadLength =
                 (uint32_t)chatResponseSize;
 
-            unsigned char responsePacket[
-                DEVHUB_HEADER_SIZE + 64
-            ];
+            unsigned char responsePacket[DEVHUB_HEADER_SIZE + 64];
 
             int responseSize =
                 protocol_build_packet(
@@ -270,6 +268,65 @@ DWORD WINAPI client_worker(LPVOID argument)
             {
                 printf(
                     "Worker : Failed to send CHAT response.\n");
+            }
+        }
+        //--------------------------------------------------
+        // FILE UPLOAD RESPONSE
+
+        if (header.type == DEVHUB_MSG_FILE_UPLOAD)
+        {
+            if (!routeResult)
+            {
+                printf("Worker : FILE_UPLOAD request rejected.\n");
+
+                continue;
+            }
+
+            const char *responseText ="FILE_UPLOAD_OK";
+
+            DevHubHeader responseHeader;
+
+            responseHeader.version =
+                DEVHUB_PROTOCOL_VERSION;
+
+            responseHeader.type =
+                DEVHUB_MSG_RESPONSE;
+
+            responseHeader.payloadLength =
+                (uint32_t)strlen(responseText);
+
+            unsigned char responsePacket[DEVHUB_HEADER_SIZE + 64];
+
+            int responseSize =
+                protocol_build_packet(
+                    &responseHeader,
+                    (const unsigned char *)responseText,
+                    responsePacket);
+
+            if (responseSize < 0)
+            {
+                printf(
+                    "Worker : Failed to build FILE_UPLOAD response.\n");
+
+                continue;
+            }
+
+            int sent =
+                socket_send(
+                    client->session.socket,
+                    (const char *)responsePacket,
+                    responseSize);
+
+            if (sent == responseSize)
+            {
+                printf(
+                    "Worker : FILE_UPLOAD response sent : %s\n",
+                    responseText);
+            }
+            else
+            {
+                printf(
+                    "Worker : Failed to send FILE_UPLOAD response.\n");
             }
         }
     }
