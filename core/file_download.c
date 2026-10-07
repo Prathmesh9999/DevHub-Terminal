@@ -310,8 +310,9 @@ int file_download_send_chunks(
     /*
      * Calculate total chunks
      */
-    uint32_t totalChunks =
-        (fileSize + DEVHUB_FILE_CHUNK_SIZE - 1) / DEVHUB_FILE_CHUNK_SIZE;
+    uint32_t totalChunks; 
+    if(fileSize==0)totalChunks=1;
+    else totalChunks = (fileSize + DEVHUB_FILE_CHUNK_SIZE - 1) / DEVHUB_FILE_CHUNK_SIZE;
 
     printf(
         "File Download : File size = %u bytes\n",
@@ -332,19 +333,24 @@ int file_download_send_chunks(
 
     uint32_t chunkNumber = 0;
 
-    while (1)
+    while (chunkNumber<totalChunks)
     {
-        size_t bytesRead =
-            fread(
+        size_t bytesRead =0;
+        if(fileSize>0){
+            bytesRead=fread(
                 chunkData,
                 1,
                 DEVHUB_FILE_CHUNK_SIZE,
                 file);
+            
 
         if (bytesRead == 0)
         {
+            printf("File Download : Failed to read chunk %u\n",chunkNumber);
+            fclose(file);
             break;
         }
+    }
 
         printf(
             "File Download : Read chunk %u (%zu bytes)\n",

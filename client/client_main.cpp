@@ -13,7 +13,6 @@ extern "C"
 
 #include "Config.hpp"
 
-
 /*
  * =========================================================
  * RECEIVE CHUNKED FILE DOWNLOAD
@@ -198,11 +197,16 @@ int receive_download_chunks(
          * -----------------------------------------------------
          */
 
+        if (chunkNumber >= totalChunks)
+        {
+            printf("Client : Invalid chunk number.\n");
+            fclose(outputFile);
+            return 0;
+        }
+
         if (chunkNumber != receivedChunks)
         {
-            printf(
-                "Client : Unexpected chunk number.\n");
-
+            printf("Client : Unexpected chunk number.\n");
             fclose(outputFile);
             return 0;
         }
@@ -334,7 +338,6 @@ int receive_download_chunks(
     return 1;
 }
 
-
 /*
  * =========================================================
  * MAIN
@@ -373,7 +376,6 @@ int main(int argc, char *argv[])
     printf(
         "Starting DevHub TCP client...\n");
 
-
     /*
      * =========================================================
      * 1. INITIALIZE WINSOCK
@@ -387,7 +389,6 @@ int main(int argc, char *argv[])
 
         return 1;
     }
-
 
     /*
      * =========================================================
@@ -410,7 +411,6 @@ int main(int argc, char *argv[])
 
     printf(
         "TCP socket created.\n");
-
 
     /*
      * =========================================================
@@ -438,7 +438,6 @@ int main(int argc, char *argv[])
     printf(
         "Connected to DevHub server!\n");
 
-
     /*
      * =========================================================
      * AUTHENTICATION
@@ -450,7 +449,6 @@ int main(int argc, char *argv[])
 
     const char *password =
         "devhub999";
-
 
     /*
      * =========================================================
@@ -482,7 +480,6 @@ int main(int argc, char *argv[])
         "Auth payload built. Size: %d bytes\n",
         authPayloadSize);
 
-
     /*
      * =========================================================
      * 5. CREATE AUTH HEADER
@@ -500,16 +497,13 @@ int main(int argc, char *argv[])
     authHeader.payloadLength =
         (uint32_t)authPayloadSize;
 
-
     /*
      * =========================================================
      * 6. BUILD AUTH PACKET
      * =========================================================
      */
 
-    unsigned char authPacket[
-        DEVHUB_HEADER_SIZE + 256
-    ];
+    unsigned char authPacket[DEVHUB_HEADER_SIZE + 256];
 
     int authPacketSize =
         protocol_build_packet(
@@ -531,7 +525,6 @@ int main(int argc, char *argv[])
     printf(
         "Auth packet built. Size: %d bytes\n",
         authPacketSize);
-
 
     /*
      * =========================================================
@@ -558,7 +551,6 @@ int main(int argc, char *argv[])
 
     printf(
         "AUTH packet sent.\n");
-
 
     /*
      * =========================================================
@@ -595,7 +587,6 @@ int main(int argc, char *argv[])
     printf(
         "Response payload length: %u\n",
         responseHeader.payloadLength);
-
 
     /*
      * =========================================================
@@ -634,9 +625,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    responsePayload[
-        responsePayloadSize
-    ] = '\0';
+    responsePayload[responsePayloadSize] = '\0';
 
     printf(
         "Server response: %s\n",
@@ -644,7 +633,6 @@ int main(int argc, char *argv[])
 
     printf(
         "\nClient authenticated successfully.\n");
-
 
     /*
      * =========================================================
@@ -669,10 +657,8 @@ int main(int argc, char *argv[])
     chatHeader.payloadLength =
         (uint32_t)strlen(chatMessage);
 
-    unsigned char chatPacket[
-        DEVHUB_HEADER_SIZE +
-        DEVHUB_MAX_PAYLOAD_SIZE
-    ];
+    unsigned char chatPacket[DEVHUB_HEADER_SIZE +
+                             DEVHUB_MAX_PAYLOAD_SIZE];
 
     int chatPacketSize =
         protocol_build_packet(
@@ -782,9 +768,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    chatResponsePayload[
-        chatResponsePayloadSize
-    ] = '\0';
+    chatResponsePayload[chatResponsePayloadSize] = '\0';
 
     printf(
         "CHAT response : %s\n",
@@ -803,7 +787,6 @@ int main(int argc, char *argv[])
             "CHAT end-to-end test FAILED.\n");
     }
 
-
     /*
      * =========================================================
      * FILE UPLOAD TEST
@@ -818,7 +801,6 @@ int main(int argc, char *argv[])
 
     const char *fileName =
         "sample.cpp";
-
 
     /*
      * OPEN FILE
@@ -837,7 +819,6 @@ int main(int argc, char *argv[])
 
         return 1;
     }
-
 
     /*
      * GET FILE SIZE
@@ -872,7 +853,6 @@ int main(int argc, char *argv[])
     printf(
         "File Size : %u bytes\n",
         fileSize);
-
 
     /*
      * READ FILE
@@ -911,7 +891,6 @@ int main(int argc, char *argv[])
 
         return 1;
     }
-
 
     /*
      * BUILD FILE_UPLOAD PAYLOAD
@@ -968,7 +947,6 @@ int main(int argc, char *argv[])
         "FILE_UPLOAD payload size : %u bytes\n",
         offset);
 
-
     /*
      * BUILD DEVHUB PACKET
      */
@@ -984,9 +962,7 @@ int main(int argc, char *argv[])
     uploadHeader.payloadLength =
         (uint32_t)offset;
 
-    unsigned char uploadPacket[
-        DEVHUB_HEADER_SIZE + 1024
-    ];
+    unsigned char uploadPacket[DEVHUB_HEADER_SIZE + 1024];
 
     int uploadPacketSize =
         protocol_build_packet(
@@ -1008,7 +984,6 @@ int main(int argc, char *argv[])
     printf(
         "FILE UPLOAD packet size : %d bytes\n",
         uploadPacketSize);
-
 
     /*
      * SEND FILE_UPLOAD PACKET
@@ -1101,9 +1076,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    uploadResponsePayload[
-        uploadResponsePayloadSize
-    ] = '\0';
+    uploadResponsePayload[uploadResponsePayloadSize] = '\0';
 
     printf(
         "FILE_UPLOAD response : %s\n",
@@ -1122,7 +1095,6 @@ int main(int argc, char *argv[])
             "FILE_UPLOAD end-to-end test FAILED.\n");
     }
 
-
     /*
      * =========================================================
      * FILE DOWNLOAD TEST
@@ -1131,7 +1103,6 @@ int main(int argc, char *argv[])
 
     printf(
         "\nStarting FILE_DOWNLOAD test...\n");
-
 
     /*
      * BUILD DOWNLOAD PAYLOAD
@@ -1144,21 +1115,15 @@ int main(int argc, char *argv[])
 
     unsigned int downloadPayloadSize = 0;
 
-
     /*
      * FILENAME LENGTH
      */
 
-    downloadPayload[
-        downloadPayloadSize++
-    ] =
+    downloadPayload[downloadPayloadSize++] =
         (unsigned char)(downloadFileNameLength >> 8);
 
-    downloadPayload[
-        downloadPayloadSize++
-    ] =
+    downloadPayload[downloadPayloadSize++] =
         (unsigned char)(downloadFileNameLength & 0xFF);
-
 
     /*
      * FILENAME
@@ -1180,7 +1145,6 @@ int main(int argc, char *argv[])
         "Download request payload size : %u bytes\n",
         downloadPayloadSize);
 
-
     /*
      * BUILD DOWNLOAD HEADER
      */
@@ -1196,9 +1160,7 @@ int main(int argc, char *argv[])
     downloadHeader.payloadLength =
         (uint32_t)downloadPayloadSize;
 
-    unsigned char downloadPacket[
-        DEVHUB_HEADER_SIZE + 256
-    ];
+    unsigned char downloadPacket[DEVHUB_HEADER_SIZE + 256];
 
     int downloadPacketSize =
         protocol_build_packet(
@@ -1220,7 +1182,6 @@ int main(int argc, char *argv[])
     printf(
         "FILE_DOWNLOAD packet size : %d bytes\n",
         downloadPacketSize);
-
 
     /*
      * SEND DOWNLOAD REQUEST
@@ -1245,7 +1206,6 @@ int main(int argc, char *argv[])
 
     printf(
         "FILE_DOWNLOAD request sent successfully.\n");
-
 
     /*
      * =========================================================
@@ -1274,7 +1234,6 @@ int main(int argc, char *argv[])
 
     printf(
         "FILE_DOWNLOAD receive test PASSED.\n");
-
 
     /*
      * =========================================================
