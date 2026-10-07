@@ -1,0 +1,2 @@
+Hello from Client B!
+This file belongs to Client B.

@@ -4,9 +4,14 @@
 #include <stdint.h>
 #include<winsock2.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define DEVHUB_PROTOCOL_VERSION 1
 #define DEVHUB_HEADER_SIZE 6
 #define DEVHUB_MAX_PAYLOAD_SIZE 1080
+#define DEVHUB_FILE_CHUNK_SIZE 512
 
 typedef enum
 {
@@ -16,6 +21,7 @@ typedef enum
     DEVHUB_MSG_FILE_DOWNLOAD = 0x04,
     DEVHUB_MSG_COMMAND = 0x05,
     DEVHUB_MSG_RESPONSE = 0x06,
+    DEVHUB_MSG_FILE_DOWNLOAD_CHUNK = 0x07
 } MessageType;
 
 typedef struct
@@ -36,4 +42,9 @@ int protocol_receive_header(SOCKET sock,DevHubHeader *header);
 int protocol_receive_payload(SOCKET sock,const DevHubHeader *header,unsigned char *buffer);
 
 int protocol_validate_header(const DevHubHeader* header);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

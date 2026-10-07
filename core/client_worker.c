@@ -7,6 +7,7 @@
 #include "../core/auth.h"
 #include "../core/session.h"
 #include "../core/chat.h"
+#include "../core/file_download.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -282,7 +283,7 @@ DWORD WINAPI client_worker(LPVOID argument)
                 continue;
             }
 
-            const char *responseText ="FILE_UPLOAD_OK";
+            const char *responseText = "FILE_UPLOAD_OK";
 
             DevHubHeader responseHeader;
 
@@ -327,6 +328,97 @@ DWORD WINAPI client_worker(LPVOID argument)
             {
                 printf(
                     "Worker : Failed to send FILE_UPLOAD response.\n");
+            }
+        }
+
+        //--------------------------------------------------
+        // FILE DOWNLOAD RESPONSE
+
+        if (header.type == DEVHUB_MSG_FILE_DOWNLOAD)
+        {
+            if (!client->session.authenticated)
+            {
+                printf(
+                    "Worker : FILE_DOWNLOAD request rejected.\n");
+
+                continue;
+            }
+
+            /*
+             * Extract requested filename
+             *
+             * FILE_DOWNLOAD payload:
+             *
+             * [2 bytes filename length]
+             * [N bytes filename]
+             */
+
+            if (header.payloadLength < 2)
+            {
+                printf(
+                    "Worker : Invalid FILE_DOWNLOAD payload.\n");
+
+                continue;
+            }
+
+            uint16_t filenameLength =
+                ((uint16_t)payload[0] << 8) |
+                payload[1];
+
+            if (filenameLength == 0)
+            {
+                printf(
+                    "Worker : Empty FILE_DOWNLOAD filename.\n");
+
+                continue;
+            }
+
+            if (filenameLength >= 256)
+            {
+                printf(
+                    "Worker : FILE_DOWNLOAD filename too long.\n");
+
+                continue;
+            }
+
+            if (2 + filenameLength != header.payloadLength)
+            {
+                printf(
+                    "Worker : Invalid FILE_DOWNLOAD payload length.\n");
+
+                continue;
+            }
+
+            char filename[256];
+
+            memcpy(
+                filename,
+                payload + 2,
+                filenameLength);
+
+            filename[filenameLength] = '\0';
+
+            printf(
+                "Worker : Chunked download requested for %s\n",
+                filename);
+
+            /*
+             * Send file in chunks
+             */
+            int result =
+                file_download_send_chunks(
+                    client->session.socket,
+                    filename);
+
+            if (result < 0)
+            {
+                printf(
+                    "Worker : Chunked FILE_DOWNLOAD failed.\n");
+            }
+            else
+            {
+                printf(
+                    "Worker : Chunked FILE_DOWNLOAD completed.\n");
             }
         }
     }

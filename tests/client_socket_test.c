@@ -6,8 +6,21 @@
 #include "../networking/protocol.h"
 #include "../core/auth.h"
 
-int main()
+int main(int argc, char *argv[])
 {
+    const char *downloadFileName = "sample.cpp";
+    const char *downloadOutputPath = "downloaded_sample.cpp";
+
+    if (argc >= 2)
+    {
+        downloadFileName = argv[1];
+    }
+
+    if (argc >= 3)
+    {
+        downloadOutputPath = argv[2];
+    }
+
     printf("Starting DevHub TCP client...\n");
 
     // ---------------------------------------------------------
@@ -611,6 +624,304 @@ int main()
             "FILE_UPLOAD end-to-end test FAILED.\n");
     }
 
+    /* =========================================================
+   FILE DOWNLOAD TEST
+   ========================================================= */
+
+    printf("\nStarting FILE_DOWNLOAD test...\n");
+
+    
+
+    uint16_t downloadFileNameLength =
+        (uint16_t)strlen(downloadFileName);
+
+    unsigned char downloadPayload[256];
+
+    unsigned int downloadPayloadSize = 0;
+
+    /* ---------------------------------------------------------
+       FILENAME LENGTH
+       --------------------------------------------------------- */
+
+    downloadPayload[downloadPayloadSize++] =
+        (unsigned char)(downloadFileNameLength >> 8);
+
+    downloadPayload[downloadPayloadSize++] =
+        (unsigned char)(downloadFileNameLength & 0xFF);
+
+    /* ---------------------------------------------------------
+       FILENAME
+       --------------------------------------------------------- */
+
+    memcpy(
+        downloadPayload + downloadPayloadSize,
+        downloadFileName,
+        downloadFileNameLength);
+
+    downloadPayloadSize += downloadFileNameLength;
+
+    printf(
+        "Download file : %s\n",
+        downloadFileName);
+
+    printf(
+        "Download request payload size : %u bytes\n",
+        downloadPayloadSize);
+
+    DevHubHeader downloadHeader;
+
+    downloadHeader.version =
+        DEVHUB_PROTOCOL_VERSION;
+
+    downloadHeader.type =
+        DEVHUB_MSG_FILE_DOWNLOAD;
+
+    downloadHeader.payloadLength =
+        (uint32_t)downloadPayloadSize;
+
+    unsigned char downloadPacket[DEVHUB_HEADER_SIZE + 256];
+
+    int downloadPacketSize =
+        protocol_build_packet(
+            &downloadHeader,
+            downloadPayload,
+            downloadPacket);
+
+    if (downloadPacketSize < 0)
+    {
+        printf(
+            "FAILED TO BUILD FILE_DOWNLOAD PACKET\n");
+
+        closesocket(clientSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+
+    printf(
+        "FILE_DOWNLOAD packet size : %d bytes\n",
+        downloadPacketSize);
+
+    int downloadBytesSent =
+        socket_send(
+            clientSocket,
+            (const char *)downloadPacket,
+            downloadPacketSize);
+
+    if (downloadBytesSent != downloadPacketSize)
+    {
+        printf(
+            "FAILED TO SEND FILE_DOWNLOAD PACKET\n");
+
+        closesocket(clientSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+
+    printf(
+        "FILE_DOWNLOAD request sent successfully.\n");
+
+    printf("\nWaiting for FILE_DOWNLOAD response...\n");
+
+    DevHubHeader downloadResponseHeader;
+
+    int downloadHeaderResult =
+        protocol_receive_header(
+            clientSocket,
+            &downloadResponseHeader);
+
+    if (downloadHeaderResult != 1)
+    {
+        printf(
+            "FAILED TO RECEIVE FILE_DOWNLOAD RESPONSE HEADER\n");
+
+        closesocket(clientSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+
+    printf(
+        "FILE_DOWNLOAD response header received.\n");
+
+    printf(
+        "Response version : %u\n",
+        downloadResponseHeader.version);
+
+    printf(
+        "Response type : %u\n",
+        downloadResponseHeader.type);
+
+    printf(
+        "Response payload length : %u bytes\n",
+        downloadResponseHeader.payloadLength);
+
+    unsigned char downloadResponse[1024];
+
+    if (downloadResponseHeader.payloadLength >=
+        sizeof(downloadResponse))
+    {
+        printf(
+            "FILE_DOWNLOAD response is too large.\n");
+
+        closesocket(clientSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+
+    int downloadResponseSize =
+        protocol_receive_payload(
+            clientSocket,
+            &downloadResponseHeader,
+            downloadResponse);
+
+    if (downloadResponseSize < 0)
+    {
+        printf(
+            "FAILED TO RECEIVE FILE_DOWNLOAD RESPONSE PAYLOAD\n");
+
+        closesocket(clientSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+
+    printf(
+        "FILE_DOWNLOAD response payload received : %d bytes\n",
+        downloadResponseSize);
+
+    unsigned int downloadOffset = 0;
+
+    if (downloadResponseSize < 6)
+    {
+        printf(
+            "Invalid FILE_DOWNLOAD response.\n");
+
+        closesocket(clientSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+
+    uint16_t returnedFilenameLength =
+        ((uint16_t)downloadResponse[downloadOffset] << 8) |
+        downloadResponse[downloadOffset + 1];
+
+    downloadOffset += 2;
+
+    if (returnedFilenameLength == 0 ||
+        returnedFilenameLength >= 256)
+    {
+        printf(
+            "Invalid returned filename length.\n");
+
+        closesocket(clientSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+
+    char returnedFilename[256];
+
+    memcpy(
+        returnedFilename,
+        downloadResponse + downloadOffset,
+        returnedFilenameLength);
+
+    returnedFilename[returnedFilenameLength] = '\0';
+
+    downloadOffset += returnedFilenameLength;
+
+    printf(
+        "Downloaded filename : %s\n",
+        returnedFilename);
+
+    if (downloadOffset + 4 >
+        (unsigned int)downloadResponseSize)
+    {
+        printf(
+            "Invalid FILE_DOWNLOAD file size section.\n");
+
+        closesocket(clientSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+
+    uint32_t downloadedFileSize =
+        ((uint32_t)downloadResponse[downloadOffset] << 24) |
+        ((uint32_t)downloadResponse[downloadOffset + 1] << 16) |
+        ((uint32_t)downloadResponse[downloadOffset + 2] << 8) |
+        (uint32_t)downloadResponse[downloadOffset + 3];
+
+    downloadOffset += 4;
+
+    printf(
+        "Downloaded file size : %u bytes\n",
+        downloadedFileSize);
+
+    if (downloadOffset + downloadedFileSize >
+        (unsigned int)downloadResponseSize)
+    {
+        printf(
+            "Downloaded file data exceeds response payload.\n");
+
+        closesocket(clientSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+
+
+    FILE *downloadFile =
+        fopen(
+            downloadOutputPath,
+            "wb");
+
+    if (downloadFile == NULL)
+    {
+        printf(
+            "FAILED TO CREATE DOWNLOADED FILE\n");
+
+        closesocket(clientSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+
+    size_t downloadedBytesWritten =
+        fwrite(
+            downloadResponse + downloadOffset,
+            1,
+            downloadedFileSize,
+            downloadFile);
+
+    fclose(downloadFile);
+
+    if (downloadedBytesWritten !=
+        downloadedFileSize)
+    {
+        printf(
+            "FAILED TO WRITE COMPLETE DOWNLOADED FILE\n");
+
+        closesocket(clientSocket);
+        socket_cleanup();
+
+        return 1;
+    }
+
+    printf(
+        "Downloaded file saved as : %s\n",
+        downloadOutputPath);
+
+    printf(
+        "Downloaded %zu bytes successfully.\n",
+        downloadedBytesWritten);
+
+    printf(
+        "FILE_DOWNLOAD receive test PASSED.\n");
 
     printf("Client is staying connected.\n");
     printf("Press ENTER to disconnect this client...\n");

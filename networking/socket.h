@@ -6,6 +6,10 @@
 #define SOCKET_RECEIVE_ERROR        -1
 #define SOCKET_RECEIVE_DISCONNECTED -2
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int socket_initialize(void);
 void socket_cleanup(void);
 SOCKET socket_create_tcp(void);
@@ -19,4 +23,9 @@ int socket_connect(SOCKET sock,const char * ip,unsigned short port);
 int socket_send(SOCKET sock,const char* data,int length);
 int socket_receive(SOCKET sock,char *buffer,int bufferSize);
 int socket_receive_all(SOCKET sock,char* buffer,int length);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

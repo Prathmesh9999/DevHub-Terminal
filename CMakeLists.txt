@@ -24,6 +24,7 @@ add_library(devhub_core
     core/client_manager.c
     core/client_worker.c
     core/file_handler.c
+    core/file_download.c
 )
 
 target_include_directories(devhub_core
@@ -81,6 +82,23 @@ target_link_libraries(file_handler_test
         devhub_core
 )
 
+add_executable(file_download_test
+    tests/file_download_test.c
+)
+
+target_link_libraries(file_download_test
+    PRIVATE
+        devhub_core
+)
+
+add_executable(file_download_chunk_test
+    tests/file_download_chunk_test.c
+)
+
+target_link_libraries(file_download_chunk_test
+    PRIVATE
+        devhub_core
+)
 
 #=====================================
 # Networking
@@ -186,4 +204,6 @@ target_link_libraries(devhub_client
     PRIVATE
         devhub_logger
         devhub_config
+        devhub_networking
+        devhub_core
 )

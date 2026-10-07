@@ -105,7 +105,7 @@ int protocol_validate_header(const DevHubHeader* header){
 
     if(header->version!=DEVHUB_PROTOCOL_VERSION)return 0;
 
-    if(header->type<DEVHUB_MSG_AUTH||header->type>DEVHUB_MSG_RESPONSE)return 0;
+    if(header->type<DEVHUB_MSG_AUTH||header->type>DEVHUB_MSG_FILE_DOWNLOAD_CHUNK)return 0;
 
     if(header->payloadLength>DEVHUB_MAX_PAYLOAD_SIZE)return 0;
 

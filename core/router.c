@@ -2,6 +2,7 @@
 #include "chat.h"
 #include "auth.h"
 #include "file_handler.h"
+#include "file_download.h"
 #include "session.h"
 #include<stdio.h>
 
@@ -45,4 +46,77 @@ int router_dispatch(ClientSession *session,const DevHubHeader * header,const uns
     }
 
     return 1;
+}
+
+int router_handle_file_download(
+    ClientSession *session,
+    const DevHubHeader *header,
+    const unsigned char *payload,
+    unsigned char *responseBuffer,
+    unsigned int responseBufferSize)
+{
+    if (session == NULL)
+    {
+        printf(
+            "Router : Invalid session.\n"
+        );
+
+        return -1;
+    }
+
+    if (header == NULL)
+    {
+        printf(
+            "Router : Invalid header.\n"
+        );
+
+        return -1;
+    }
+
+    if (payload == NULL)
+    {
+        printf(
+            "Router : Invalid payload.\n"
+        );
+
+        return -1;
+    }
+
+    if (responseBuffer == NULL)
+    {
+        printf(
+            "Router : Invalid response buffer.\n"
+        );
+
+        return -1;
+    }
+
+    if (!session_is_authenticated(session))
+    {
+        printf(
+            "Router : Client not authenticated.\n"
+        );
+
+        return -1;
+    }
+
+    if (header->type != DEVHUB_MSG_FILE_DOWNLOAD)
+    {
+        printf(
+            "Router : Invalid message type for download.\n"
+        );
+
+        return -1;
+    }
+
+    printf(
+        "Router : FILE_DOWNLOAD message\n"
+    );
+
+    return file_download_handle(
+        payload,
+        header->payloadLength,
+        responseBuffer,
+        responseBufferSize
+    );
 }
